@@ -46,7 +46,7 @@ func checkError(err error) {
 func getBusLines(db *sql.DB) string {
 	var buffer bytes.Buffer
 
-	rows, err := db.Query("SELECT * FROM BusLine")
+	rows, err := db.Query("SELECT BusLine.id, BusLine.hexColor, BusLineNameTranslation.name FROM BusLine INNER JOIN BusLineNameTranslation ON BusLine.id = BusLineNameTranslation.busLineId ")
 	checkError(err)
 	buffer.WriteString("\"lines\": [")
 
@@ -55,7 +55,8 @@ func getBusLines(db *sql.DB) string {
 	for rows.Next() {
 		var id int
 		var hexColor string
-		err = rows.Scan(&id, &hexColor)
+		var name string
+		err = rows.Scan(&id, &hexColor, &name)
 		checkError(err)
 
 		if firstTime {
@@ -65,11 +66,8 @@ func getBusLines(db *sql.DB) string {
 		}
 
 		buffer.WriteString("{")
-		buffer.WriteString("\"" + strconv.Itoa(id) + "\" : { \"color\" : \"" + hexColor + "\"}")
-		//buffer.WriteString("\"" + id + "\" : { \"color\" : \"" + hexColor + "\", \"name\" : " + name + "\"}")
+		buffer.WriteString("\"" + strconv.Itoa(id) + "\" : { \"color\" : \"" + hexColor + "\", \"name\" : \"" + name + "\"}")
 		buffer.WriteString("}")
-
-		//fmt.Printf("id: %v, hexColor: %v\n", id, hexColor)
 	}
 	buffer.WriteString("]")
 
