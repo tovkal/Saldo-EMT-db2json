@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"log"
+	"os"
 	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -18,29 +20,44 @@ func main() {
 	// Create the database handle, confirm driver is present
 	db, err := sql.Open("mysql", db_user+":@"+"/"+db_name)
 	checkError(err)
-
 	defer db.Close()
 
-	var languageId string
-
-	err = db.QueryRow("SELECT id FROM Language WHERE code = ?", language_export).Scan(&languageId)
-	checkError(err)
+	// Get language id for value defined in constatnt language_export
+	//languageId := getLanguageId(db)
 
 	var buffer bytes.Buffer
-
 	buffer.WriteString("{")
-
 	buffer.WriteString(getBusLines(db))
-
 	buffer.WriteString("}")
-	log.Println("Resulting JSON:")
-	log.Print(buffer.String())
+
+	var output bytes.Buffer
+	err = json.Indent(&output, buffer.Bytes(), "", "  ")
+	checkError(err)
+
+	// Create file
+	f, err := os.Create("out.json")
+	checkError(err)
+	defer f.Close()
+
+	f.Write(output.Bytes())
+	f.Sync()
+
+	log.Println("Done!")
 }
 
 func checkError(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func getLanguageId(db *sql.DB) string {
+	var languageId string
+
+	err := db.QueryRow("SELECT id FROM Language WHERE code = ?", language_export).Scan(&languageId)
+	checkError(err)
+
+	return languageId
 }
 
 func getBusLines(db *sql.DB) string {
