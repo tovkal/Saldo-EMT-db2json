@@ -64,52 +64,118 @@ func getLanguageId(db *sql.DB) string {
 func getFares(db *sql.DB, languageId string) string {
 	var buffer bytes.Buffer
 
-	rows, err := db.Query("SELECT Fare.id, Fare.days, Fare.rides FROM Fare")
+	rows, err := db.Query("SELECT Fare.id, Fare.days, Fare.rides, FareNameTranslation.name FROM Fare INNER JOIN FareNameTranslation ON Fare.id = FareNameTranslation.fareId WHERE FareNameTranslation.language = ?", languageId)
 	checkError(err)
 	defer rows.Close()
 	buffer.WriteString("\"fares\": [")
 
 	firstFare := true
 	for rows.Next() {
-		var id int
-		var days sql.NullInt64
-		var rides sql.NullInt64
-
-		err = rows.Scan(&id, &days, &rides)
-		checkError(err)
-
 		if firstFare {
 			firstFare = false
 		} else {
 			buffer.WriteString(",")
 		}
 
-		buffer.WriteString("{\"" + strconv.Itoa(id) + "\": " + "{")
+		var id int
+		var days sql.NullInt64
+		var rides sql.NullInt64
+		var name string
 
-		firstAttribute := true
+		err = rows.Scan(&id, &days, &rides, &name)
+		checkError(err)
 
-		if days.Valid {
-			buffer.WriteString("\"days\":" + strconv.Itoa(int(days.Int64)))
-			firstAttribute = false
-		}
+		busLineForPriceMap := getFarePriceAndBusLines(db, id)
 
-		if rides.Valid {
-			if !firstAttribute {
-				buffer.WriteString(",")
+		first := true
+		for price, busLines := range busLineForPriceMap {
+			if first {
+				first = false
 			} else {
-				firstAttribute = false
+				buffer.WriteString(",")
 			}
-
-			buffer.WriteString("\"rides\":" + strconv.Itoa(int(rides.Int64)))
+			buffer.WriteString(buildFare(id, days, rides, name, price, busLines))
 		}
-
-		buffer.WriteString("}")
-		buffer.WriteString("}")
 	}
 
 	buffer.WriteString("],")
 
 	return buffer.String()
+}
+
+func buildFare(id int, days sql.NullInt64, rides sql.NullInt64, name string, price string, busLines []int) string {
+	var buffer bytes.Buffer
+
+	buffer.WriteString("{\"" + strconv.Itoa(id) + "\": " + "{")
+
+	firstAttribute := true
+
+	// days
+	if days.Valid {
+		buffer.WriteString("\"days\":" + strconv.Itoa(int(days.Int64)))
+		firstAttribute = false
+	}
+
+	// rides
+	if rides.Valid {
+		if !firstAttribute {
+			buffer.WriteString(",")
+		} else {
+			firstAttribute = false
+		}
+
+		buffer.WriteString("\"rides\":" + strconv.Itoa(int(rides.Int64)))
+	}
+
+	// name
+	if !firstAttribute {
+		buffer.WriteString(",")
+	} else {
+		firstAttribute = false
+	}
+	buffer.WriteString("\"name\": \"" + name + "\"")
+
+	// price
+	buffer.WriteString(",\"price\": " + price)
+
+	// busLines
+	firstBusLine := true
+	buffer.WriteString(",\"lines\": [")
+	for _, busLine := range busLines {
+
+		if firstBusLine {
+			firstBusLine = false
+		} else {
+			buffer.WriteString(",")
+		}
+
+		buffer.WriteString(strconv.Itoa(busLine))
+	}
+	buffer.WriteString("]")
+
+	buffer.WriteString("}")
+	buffer.WriteString("}")
+
+	return buffer.String()
+}
+
+func getFarePriceAndBusLines(db *sql.DB, id int) map[string][]int {
+	rows, err := db.Query("SELECT busLineId, price FROM BusLineFarePrice WHERE fareId = ?", id)
+	checkError(err)
+	defer rows.Close()
+
+	busLineForPriceMap := make(map[string][]int)
+
+	var busLineId int
+	var price string
+	for rows.Next() {
+		err = rows.Scan(&busLineId, &price)
+		checkError(err)
+
+		busLineForPriceMap[price] = append(busLineForPriceMap[price], busLineId)
+	}
+
+	return busLineForPriceMap
 }
 
 func getBusLines(db *sql.DB) string {
