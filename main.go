@@ -70,6 +70,7 @@ func getFares(db *sql.DB, languageId string) string {
 	buffer.WriteString("\"fares\": [")
 
 	firstFare := true
+	fareId := 1
 	for rows.Next() {
 		if firstFare {
 			firstFare = false
@@ -94,7 +95,8 @@ func getFares(db *sql.DB, languageId string) string {
 			} else {
 				buffer.WriteString(",")
 			}
-			buffer.WriteString(buildFare(id, days, rides, name, price, busLines))
+			buffer.WriteString(buildFare(fareId, days, rides, name, price, busLines))
+			fareId++
 		}
 	}
 
