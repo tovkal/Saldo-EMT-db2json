@@ -36,7 +36,7 @@ func main() {
 	checkError(err)
 
 	// Create file
-	f, err := os.Create("out.json")
+	f, err := os.Create("fares_" + language_export + ".json")
 	checkError(err)
 	defer f.Close()
 
