@@ -7,7 +7,11 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -17,6 +21,8 @@ const db_name string = "saldo_emt"
 const language_export string = "es"
 
 func main() {
+	resultFileName := "fares_" + language_export + ".json"
+
 	// Create the database handle, confirm driver is present
 	db, err := sql.Open("mysql", db_user+":@"+"/"+db_name)
 	checkError(err)
@@ -36,12 +42,16 @@ func main() {
 	checkError(err)
 
 	// Create file
-	f, err := os.Create("fares_" + language_export + ".json")
+	f, err := os.Create(resultFileName)
 	checkError(err)
 	defer f.Close()
 
 	f.Write(output.Bytes())
 	f.Sync()
+
+	log.Println("Going to upload")
+
+	uploadFile(resultFileName)
 
 	log.Println("Done!")
 }
@@ -51,6 +61,8 @@ func checkError(err error) {
 		log.Fatal(err)
 	}
 }
+
+/* Parse fares */
 
 func getLanguageId(db *sql.DB) string {
 	var languageId string
@@ -209,4 +221,39 @@ func getBusLines(db *sql.DB) string {
 	buffer.WriteString("]")
 
 	return buffer.String()
+}
+
+/* Upload file to aws S3 */
+
+func uploadFile(file string) {
+	bucket := "saldo-emt"
+	key := "TestFile.txt"
+
+	log.Println("Starting...")
+
+	svc := s3.New(session.New(&aws.Config{Region: aws.String("eu-central-1")}))
+	_, err := svc.CreateBucket(&s3.CreateBucketInput{
+		Bucket: &bucket,
+	})
+	if err != nil {
+		log.Println("Failed to create bucket", err)
+		return
+	}
+
+	if err = svc.WaitUntilBucketExists(&s3.HeadBucketInput{Bucket: &bucket}); err != nil {
+		log.Printf("Failed to wait for bucket to exist %s, %s\n", bucket, err)
+		return
+	}
+
+	_, err = svc.PutObject(&s3.PutObjectInput{
+		Body:   strings.NewReader("Hello World!"),
+		Bucket: &bucket,
+		Key:    &key,
+	})
+	if err != nil {
+		log.Printf("Failed to upload data to %s/%s, %s\n", bucket, key, err)
+		return
+	}
+
+	log.Printf("Successfully created bucket %s and uploaded data with key %s\n", bucket, key)
 }
