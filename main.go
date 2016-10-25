@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 
@@ -21,8 +20,6 @@ const db_name string = "saldo_emt"
 const language_export string = "es"
 
 func main() {
-	resultFileName := "fares_" + language_export + ".json"
-
 	// Create the database handle, confirm driver is present
 	db, err := sql.Open("mysql", db_user+":@"+"/"+db_name)
 	checkError(err)
@@ -41,17 +38,7 @@ func main() {
 	err = json.Indent(&output, buffer.Bytes(), "", "  ")
 	checkError(err)
 
-	// Create file
-	f, err := os.Create(resultFileName)
-	checkError(err)
-	defer f.Close()
-
-	f.Write(output.Bytes())
-	f.Sync()
-
-	log.Println("Going to upload")
-
-	uploadFile(resultFileName)
+	uploadFile(output)
 
 	log.Println("Done!")
 }
@@ -225,28 +212,16 @@ func getBusLines(db *sql.DB) string {
 
 /* Upload file to aws S3 */
 
-func uploadFile(file string) {
+func uploadFile(output bytes.Buffer) {
 	bucket := "saldo-emt"
-	key := "TestFile.txt"
+	key := "fares_" + language_export + ".json"
 
-	log.Println("Starting...")
+	log.Println("Uploading json to s3...")
 
 	svc := s3.New(session.New(&aws.Config{Region: aws.String("eu-central-1")}))
-	_, err := svc.CreateBucket(&s3.CreateBucketInput{
-		Bucket: &bucket,
-	})
-	if err != nil {
-		log.Println("Failed to create bucket", err)
-		return
-	}
 
-	if err = svc.WaitUntilBucketExists(&s3.HeadBucketInput{Bucket: &bucket}); err != nil {
-		log.Printf("Failed to wait for bucket to exist %s, %s\n", bucket, err)
-		return
-	}
-
-	_, err = svc.PutObject(&s3.PutObjectInput{
-		Body:   strings.NewReader("Hello World!"),
+	_, err := svc.PutObject(&s3.PutObjectInput{
+		Body:   strings.NewReader(output.String()),
 		Bucket: &bucket,
 		Key:    &key,
 	})
