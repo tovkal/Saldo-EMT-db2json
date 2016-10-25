@@ -7,6 +7,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -29,7 +30,9 @@ func main() {
 	languageId := getLanguageId(db)
 
 	var buffer bytes.Buffer
+	time := time.Now()
 	buffer.WriteString("{")
+	buffer.WriteString("\"timestamp\":" + time.Format("20060102") + ",")
 	buffer.WriteString(getFares(db, languageId))
 	buffer.WriteString(getBusLines(db))
 	buffer.WriteString("}")
@@ -230,5 +233,5 @@ func uploadFile(output bytes.Buffer) {
 		return
 	}
 
-	log.Printf("Successfully created bucket %s and uploaded data with key %s\n", bucket, key)
+	log.Printf("Successfully uploaded file %s to bucket %s\n", key, bucket)
 }
