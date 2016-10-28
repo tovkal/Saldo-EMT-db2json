@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"database/sql"
-	"encoding/json"
 	"log"
 	"strconv"
 	"strings"
@@ -37,11 +36,7 @@ func main() {
 	buffer.WriteString(getBusLines(db))
 	buffer.WriteString("}")
 
-	var output bytes.Buffer
-	err = json.Indent(&output, buffer.Bytes(), "", "  ")
-	checkError(err)
-
-	uploadFile(output)
+	uploadFile(buffer)
 
 	log.Println("Done!")
 }
