@@ -16,7 +16,7 @@ import (
 
 const db_host string = "localhost"
 const db_user string = "root"
-const db_name string = "saldo_emt"
+const db_name string = "SaldoEMT"
 const language_export string = "es"
 
 func main() {
@@ -33,7 +33,6 @@ func main() {
 	buffer.WriteString("{")
 	buffer.WriteString("\"timestamp\":" + time.Format("20060102") + ",")
 	buffer.WriteString(getFares(db, languageId))
-	buffer.WriteString(getBusLines(db))
 	buffer.WriteString("}")
 
 	uploadFile(buffer)
@@ -61,7 +60,7 @@ func getLanguageId(db *sql.DB) string {
 func getFares(db *sql.DB, languageId string) string {
 	var buffer bytes.Buffer
 
-	rows, err := db.Query("SELECT Fare.id, Fare.days, Fare.rides, FareNameTranslation.name FROM Fare INNER JOIN FareNameTranslation ON Fare.id = FareNameTranslation.fareId WHERE FareNameTranslation.language = ?", languageId)
+	rows, err := db.Query("SELECT t.name 'fareName', bt.name 'busLineTypeName', bltf.cost, f.days, f.rides, b.imageUrl FROM Fare f INNER JOIN FareNameTranslation t ON f.id = t.fareId INNER JOIN BusLineTypeFare bltf ON f.id = bltf.fareId INNER JOIN BusLineTypeTranslation bt ON bltf.busLineTypeId = bt.id INNER JOIN BusLineType b ON bt.busLineTypeId = b.id WHERE t.language = ? ORDER BY bt.id, f.id;", languageId)
 	checkError(err)
 	defer rows.Close()
 	buffer.WriteString("\"fares\": [")
@@ -75,135 +74,47 @@ func getFares(db *sql.DB, languageId string) string {
 			buffer.WriteString(",")
 		}
 
-		var id int
+		var name string
+		var busLineType string
+		var cost float64
 		var days sql.NullInt64
 		var rides sql.NullInt64
-		var name string
+		var imageUrl string
 
-		err = rows.Scan(&id, &days, &rides, &name)
+		err = rows.Scan(&name, &busLineType, &cost, &days, &rides, &imageUrl)
 		checkError(err)
 
-		busLineForPriceMap := getFarePriceAndBusLines(db, id)
-
-		first := true
-		for price, busLines := range busLineForPriceMap {
-			if first {
-				first = false
-			} else {
-				buffer.WriteString(",")
-			}
-			buffer.WriteString(buildFare(fareId, days, rides, name, price, busLines))
-			fareId++
-		}
+		buffer.WriteString(buildFare(fareId, name, busLineType, cost, days, rides, imageUrl))
+		fareId++
 	}
 
-	buffer.WriteString("],")
+	buffer.WriteString("]")
 
 	return buffer.String()
 }
 
-func buildFare(id int, days sql.NullInt64, rides sql.NullInt64, name string, price string, busLines []int) string {
+func buildFare(id int, name string, busLineType string, cost float64, days sql.NullInt64, rides sql.NullInt64, imageUrl string) string {
 	var buffer bytes.Buffer
 
 	buffer.WriteString("{\"" + strconv.Itoa(id) + "\": " + "{")
 
-	firstAttribute := true
+	buffer.WriteString("\"name\": \"" + name + "\"")
+	buffer.WriteString(",\"busLineType\": \"" + busLineType + "\"")
+	buffer.WriteString(",\"cost\": \"" + strconv.FormatFloat(cost, 'f', 3, 64) + "\"")
+	buffer.WriteString(",\"imageUrl\": \"" + imageUrl + "\"")
 
 	// days
 	if days.Valid {
-		buffer.WriteString("\"days\":" + strconv.Itoa(int(days.Int64)))
-		firstAttribute = false
+		buffer.WriteString(",\"days\":" + strconv.Itoa(int(days.Int64)))
 	}
 
 	// rides
 	if rides.Valid {
-		if !firstAttribute {
-			buffer.WriteString(",")
-		} else {
-			firstAttribute = false
-		}
-
-		buffer.WriteString("\"rides\":" + strconv.Itoa(int(rides.Int64)))
+		buffer.WriteString(",\"rides\":" + strconv.Itoa(int(rides.Int64)))
 	}
-
-	// name
-	if !firstAttribute {
-		buffer.WriteString(",")
-	} else {
-		firstAttribute = false
-	}
-	buffer.WriteString("\"name\": \"" + name + "\"")
-
-	// price
-	buffer.WriteString(",\"price\": " + price)
-
-	// busLines
-	firstBusLine := true
-	buffer.WriteString(",\"lines\": [")
-	for _, busLine := range busLines {
-
-		if firstBusLine {
-			firstBusLine = false
-		} else {
-			buffer.WriteString(",")
-		}
-
-		buffer.WriteString(strconv.Itoa(busLine))
-	}
-	buffer.WriteString("]")
 
 	buffer.WriteString("}")
 	buffer.WriteString("}")
-
-	return buffer.String()
-}
-
-func getFarePriceAndBusLines(db *sql.DB, id int) map[string][]int {
-	rows, err := db.Query("SELECT busLineId, price FROM BusLineFarePrice WHERE fareId = ?", id)
-	checkError(err)
-	defer rows.Close()
-
-	busLineForPriceMap := make(map[string][]int)
-
-	var busLineId int
-	var price string
-	for rows.Next() {
-		err = rows.Scan(&busLineId, &price)
-		checkError(err)
-
-		busLineForPriceMap[price] = append(busLineForPriceMap[price], busLineId)
-	}
-
-	return busLineForPriceMap
-}
-
-func getBusLines(db *sql.DB) string {
-	var buffer bytes.Buffer
-
-	rows, err := db.Query("SELECT BusLine.id, BusLine.hexColor, BusLineNameTranslation.name FROM BusLine INNER JOIN BusLineNameTranslation ON BusLine.id = BusLineNameTranslation.busLineId ")
-	checkError(err)
-	buffer.WriteString("\"lines\": [")
-
-	firstTime := true
-	defer rows.Close()
-	for rows.Next() {
-		var id int
-		var hexColor string
-		var name string
-		err = rows.Scan(&id, &hexColor, &name)
-		checkError(err)
-
-		if firstTime {
-			firstTime = false
-		} else {
-			buffer.WriteString(",")
-		}
-
-		buffer.WriteString("{")
-		buffer.WriteString("\"" + strconv.Itoa(id) + "\" : { \"color\" : \"" + hexColor + "\", \"name\" : \"" + name + "\"}")
-		buffer.WriteString("}")
-	}
-	buffer.WriteString("]")
 
 	return buffer.String()
 }
