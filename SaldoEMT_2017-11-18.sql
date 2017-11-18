@@ -7,7 +7,7 @@
 #
 # Host: localhost (MySQL 5.7.20)
 # Database: SaldoEMT
-# Generation Time: 2017-11-12 16:15:27 +0000
+# Generation Time: 2017-11-18 21:02:52 +0000
 # ************************************************************
 
 
@@ -124,7 +124,16 @@ INSERT INTO `BusLineTypeTranslation` (`id`, `busLineTypeId`, `language`, `name`)
 VALUES
 	(1,1,1,'Zona Urbana'),
 	(2,2,1,'Aeropuerto'),
-	(3,3,1,'Puerto');
+	(3,3,1,'Puerto'),
+	(4,1,2,'Zona Urbana'),
+	(5,2,2,'Aeroport'),
+	(6,3,2,'Port'),
+	(7,1,3,'Urban Zone'),
+	(8,2,3,'Airport'),
+	(9,3,3,'Port'),
+	(10,1,4,'Stadtgebiet'),
+	(11,2,4,'Flughafen'),
+	(12,3,4,'Hafen');
 
 /*!40000 ALTER TABLE `BusLineTypeTranslation` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -194,8 +203,41 @@ VALUES
 	(7,'Familia Numerosa',7,1),
 	(8,'Menores entre 5 y 12 años',8,1),
 	(9,'Menores entre 13 y 16 años',9,1),
-	(10,'Abono 20 Viajes/30 días Residente',10,1),
-	(11,'Abono 50 viajes/30 días residente',11,1);
+	(10,'Abono 20 Viajes/30 días residente',10,1),
+	(11,'Abono 50 viajes/30 días residente',11,1),
+	(12,'Resident',1,2),
+	(13,'No resident',2,2),
+	(14,'Estudiant i universitari',3,2),
+	(15,'Carnet Verd',4,2),
+	(16,'Carnet Gran A',5,2),
+	(17,'Carnet Gran B',6,2),
+	(18,'Família Nombrosa',7,2),
+	(19,'Menor entre 5 i 12 anys',8,2),
+	(20,'Menor entre 13 I 16 anys',9,2),
+	(21,'Abonament 20 viatges/30 dies resident',10,2),
+	(22,'Abonament 50 viatges/30 dies resident',11,2),
+	(23,'Resident',1,3),
+	(24,'Non-resident',2,3),
+	(25,'Students',3,3),
+	(26,'Pensioners carnet verd',4,3),
+	(27,'Pensioners carnet gran A',5,3),
+	(28,'Pensioners carnet gran B',6,3),
+	(29,'Large family',7,3),
+	(30,'Children from 5 to 12',8,3),
+	(31,'Children from 13 to 16',9,3),
+	(32,'20-journey credit / 30 days resident',10,3),
+	(33,'50-journey credit / 30 days resident',11,3),
+	(34,'Ansässiger',1,4),
+	(35,'Nichtansässiger',2,4),
+	(36,'Studenten',3,4),
+	(37,'Rentner carnet verd',4,4),
+	(38,'Rentner carnet gran A',5,4),
+	(39,'Rentner carnet gran B',6,4),
+	(40,'Kinderreiche familien',7,4),
+	(41,'Kinder 5 bis 12 jahre',8,4),
+	(42,'Kinder 13 bis 16 jahre',9,4),
+	(43,'20-fahrten-abo / 30 tage ansässiger',10,4),
+	(44,'50-fahrten-abo / 30 tage ansässiger',11,4);
 
 /*!40000 ALTER TABLE `FareNameTranslation` ENABLE KEYS */;
 UNLOCK TABLES;
