@@ -60,7 +60,7 @@ func getLanguageId(db *sql.DB) string {
 func getFares(db *sql.DB, languageId string) string {
 	var buffer bytes.Buffer
 
-	rows, err := db.Query("SELECT t.name 'fareName', bt.name 'busLineTypeName', bltf.cost, f.days, f.rides, b.imageUrl, b.displayBusLineTypeName FROM Fare f INNER JOIN FareNameTranslation t ON f.id = t.fareId INNER JOIN BusLineTypeFare bltf ON f.id = bltf.fareId INNER JOIN BusLineTypeTranslation bt ON bltf.busLineTypeId = bt.id INNER JOIN BusLineType b ON bt.busLineTypeId = b.id WHERE t.language = ? ORDER BY bt.id, f.id;", languageId)
+	rows, err := db.Query("SELECT t.name 'fareName', bt.name 'busLineTypeName', bltf.cost, f.days, f.rides, b.imageUrl, b.displayBusLineTypeName FROM Fare f INNER JOIN FareNameTranslation t ON f.id = t.fareId INNER JOIN BusLineTypeFare bltf ON f.id = bltf.fareId INNER JOIN BusLineTypeTranslation bt ON bltf.busLineTypeId = bt.busLineTypeId AND bt.language = ? INNER JOIN BusLineType b ON bt.busLineTypeId = b.id WHERE t.language = ? ORDER BY bt.id, f.id;", languageId, languageId)
 	checkError(err)
 	defer rows.Close()
 	buffer.WriteString("\"fares\": [")
