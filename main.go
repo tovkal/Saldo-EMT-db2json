@@ -60,7 +60,7 @@ func getLanguageId(db *sql.DB) string {
 func getFares(db *sql.DB, languageId string) string {
 	var buffer bytes.Buffer
 
-	rows, err := db.Query("SELECT t.name 'fareName', bt.name 'busLineTypeName', bltf.cost, f.days, f.rides, b.imageUrl FROM Fare f INNER JOIN FareNameTranslation t ON f.id = t.fareId INNER JOIN BusLineTypeFare bltf ON f.id = bltf.fareId INNER JOIN BusLineTypeTranslation bt ON bltf.busLineTypeId = bt.id INNER JOIN BusLineType b ON bt.busLineTypeId = b.id WHERE t.language = ? ORDER BY bt.id, f.id;", languageId)
+	rows, err := db.Query("SELECT t.name 'fareName', bt.name 'busLineTypeName', bltf.cost, f.days, f.rides, b.imageUrl, b.displayBusLineTypeName FROM Fare f INNER JOIN FareNameTranslation t ON f.id = t.fareId INNER JOIN BusLineTypeFare bltf ON f.id = bltf.fareId INNER JOIN BusLineTypeTranslation bt ON bltf.busLineTypeId = bt.id INNER JOIN BusLineType b ON bt.busLineTypeId = b.id WHERE t.language = ? ORDER BY bt.id, f.id;", languageId)
 	checkError(err)
 	defer rows.Close()
 	buffer.WriteString("\"fares\": [")
@@ -80,11 +80,12 @@ func getFares(db *sql.DB, languageId string) string {
 		var days sql.NullInt64
 		var rides sql.NullInt64
 		var imageUrl string
+		var displayBusLineTypeName string
 
-		err = rows.Scan(&name, &busLineType, &cost, &days, &rides, &imageUrl)
+		err = rows.Scan(&name, &busLineType, &cost, &days, &rides, &imageUrl, &displayBusLineTypeName)
 		checkError(err)
 
-		buffer.WriteString(buildFare(fareId, name, busLineType, cost, days, rides, imageUrl))
+		buffer.WriteString(buildFare(fareId, name, busLineType, cost, days, rides, imageUrl, displayBusLineTypeName))
 		fareId++
 	}
 
@@ -93,7 +94,7 @@ func getFares(db *sql.DB, languageId string) string {
 	return buffer.String()
 }
 
-func buildFare(id int, name string, busLineType string, cost float64, days sql.NullInt64, rides sql.NullInt64, imageUrl string) string {
+func buildFare(id int, name string, busLineType string, cost float64, days sql.NullInt64, rides sql.NullInt64, imageUrl string, displayBusLineTypeName string) string {
 	var buffer bytes.Buffer
 
 	buffer.WriteString("{\"" + strconv.Itoa(id) + "\": " + "{")
@@ -102,6 +103,7 @@ func buildFare(id int, name string, busLineType string, cost float64, days sql.N
 	buffer.WriteString(",\"busLineType\": \"" + busLineType + "\"")
 	buffer.WriteString(",\"cost\": \"" + strconv.FormatFloat(cost, 'f', 3, 64) + "\"")
 	buffer.WriteString(",\"imageUrl\": \"" + imageUrl + "\"")
+	buffer.WriteString(",\"displayBusLineTypeName\": " + strconv.FormatBool(displayBusLineTypeName == "\x01"))
 
 	// days
 	if days.Valid {
